@@ -1,0 +1,178 @@
+---
+title: "Population, November 14th 2023"
+output: 
+  html_document:
+    css: Wil_style.css
+    theme: default
+    toc: TRUE
+    toc_float: TRUE
+    number_sections: TRUE
+always_allow_html: yes
+---
+
+```{r setup1, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(bslib)
+library(DT)
+library(dplyr)
+library(gglaplot)
+library(ggplot2)
+library(data.table)
+library(tidyr)
+library(stringr)
+library(tidyverse)
+library(plotly)
+library(sf)
+library(htmlwidgets)
+library(knitr)
+library(lubridate)
+library(maps)
+library(scales)
+library(forcats)
+
+data_dir <- 'DATA/'
+chart_dir <- 'CHARTS/'
+
+#colour_palette <- gla_colour_palette()[c(3,6,2,4,5,7,1)]
+
+# Disable scientific notation
+options(scipen=999)
+
+```
+
+
+```{r setup2, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+## Import census population data for London
+
+input_2011data <- fread(paste0(data_dir,"Census2011_London_SYA_byBorough.csv"))%>% 
+  data.frame()
+
+input_2021data_long <- fread(paste0(data_dir,"Census2021_London_SYA_byBorough_long.csv"))%>% 
+  mutate(census = 2021) %>%
+  select (-c(Age_desc)) %>%
+  data.frame()
+
+# convert 2011 data from wide to long format
+
+input_2011data_ed <- select(input_2011data, -contains("V"))
+input_2011data_long <- input_2011data_ed %>% 
+  pivot_longer(
+    cols = `All`:`X100`, 
+    names_to = "year",
+    values_to = "Value") %>%
+  mutate(Age_code = as.numeric(gsub("X", "", year))) %>%
+  mutate(census = 2011) %>%
+  select (-c(year)) %>%
+    data.frame()
+
+# calculate totals for 2011 by borough (to check against values in original file)
+summ_2011data <- input_2011data_long %>% 
+  drop_na() %>%
+#  filter(year !="All") %>%
+  group_by(Borough_code) %>% 
+  summarise(Sum_value = sum(Value)) %>%
+  data.frame()
+
+# calculate totals for 2021 by borough
+summ_2021data <- input_2021data_long %>% 
+  group_by(Borough_code) %>% 
+  summarise(Sum_value = sum(Value)) %>%
+  data.frame()
+
+# Add the two files together 
+Census_byBorough <- rbind(input_2011data_long, input_2021data_long) %>%
+    drop_na() %>%
+  data.frame()
+
+Census_total_byBorough <- Census_byBorough %>% 
+  group_by(Borough_code, census) %>% 
+  summarise(Sum_value = sum(Value)) %>%
+  data.frame()
+
+Census_total_byLondon <- Census_byBorough %>% 
+  filter(grepl('E09000', Borough_code)) %>%
+  group_by(Age_code, census) %>% 
+  summarise(Sum_value = sum(Value)) %>%
+  data.frame()
+
+
+```
+
+
+
+```{r fig_pop_pyramid, fig.height = 9, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+catcolour2 = c('#ee266d', '#6da7de')
+
+Census_total_byLondon %>%
+  mutate(population = ifelse(census=="2011", Sum_value*(-1),
+                        Sum_value*1))%>%
+    mutate(census_factor = as.factor(census)) %>%
+    ggplot(aes(x = Age_code,y = population/1000, fill=census_factor)) + 
+    theme_gla()+
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title= "Population Pyramid for London, comparing 2011 with 2021", 
+         x = "Age",
+         y = "Population (thousands)",
+     caption = paste0("Source: ONS, Chart: GLA demography"))
+
+# ggsave (filename = (paste0(chart_dir, "modelled_births_zone_line.png")),
+#          plot = modelled_births_zone_line,
+#          device = "png",
+#          dpi=600,
+#          width = 9,
+#          height = 5.56,
+#          units = "in")
+
+
+
+```
+
+```{r setup3, include=FALSE, echo=FALSE, warning=FALSE, message=FALSE}
+
+
+# Convert data long to wide format
+
+London_data_wide <- Census_total_byLondon %>% 
+  pivot_wider(
+    names_from=census, values_from=Sum_value) %>%
+  data.frame()
+
+London_calc <- London_data_wide %>%
+  mutate(changePerc = ((X2021 - X2011)*100/X2011)) %>%
+  data.frame()
+
+
+```
+
+
+```{r fig_pop_change, fig.height = 9, fig.width = 9,  echo=FALSE, warning=FALSE, message=FALSE}
+
+catcolour2 = c('#ee266d', '#6da7de')
+
+Census_change_byLondon <- London_calc %>%
+    ggplot(aes(x = Age_code, y = changePerc)) + 
+    theme_gla()+
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title= "Percentage change in population, comparing 2011 with 2021", 
+         x = "Age",
+         y = "Population (thousands)",
+     caption = paste0("Source: ONS, Chart: GLA demography"))
+Census_change_byLondon
+
+# ggsave (filename = (paste0(chart_dir, "modelled_births_zone_line.png")),
+#          plot = modelled_births_zone_line,
+#          device = "png",
+#          dpi=600,
+#          width = 9,
+#          height = 5.56,
+#          units = "in")
+
+
+
+```
