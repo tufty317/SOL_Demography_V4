@@ -366,7 +366,7 @@ change_South_geog <- South_ageZeroandTen_calc %>%
                                         " 24.0  - 40.00"))) %>%
   data.frame()
 
-cohort_change_map <- change_South_geog %>%
+cohort_change_map_expanded <- change_South_geog %>%
   ggplot()+
   geom_point(aes(x=BNG_E, y=BNG_N,
                  text = paste("LA name: ",  new_name,
@@ -393,24 +393,34 @@ cohort_change_map <- change_South_geog %>%
         panel.border = element_rect(colour = "black", fill=NA, size=2))+
   scale_fill_manual(values = londonmap6_diverge) + 
 #  scale_alpha_manual(values=c(0.5, 0)) +
-  labs(title= "Cohort change between 2011 and 2021 (zeros to ten year olds) in London", 
+  labs(title= "Inter-census cohort change (<1 y.o in 2011 to 10 y.o. in 2021)", 
        caption = paste0("Source: Home Office, Chart: GLA demography")) +
-  labs(fill = "") + 
+  labs(fill = "% change") + 
   guides(alpha="none") +
   #annotate(geom = "rect", ymax = 210000, ymin = 140000, xmax = 570000, xmin = 490000, colour = "black", fill = NA) +
   coord_sf(xlim = c(480000,580000), ylim = c(130000, 220000))
 
-cohort_change_map
+
+ggsave (filename = (paste0(chart_dir, "cohort_change_map_expanded.png")),
+         plot = cohort_change_map_expanded,
+         device = "png",
+         dpi=600,
+         width = 9,
+         height = 5.56,
+         units = "in")
+
+
+cohort_change_map_expanded
 
 # Interactive map using ggplotly
 
-cohort_change_map_int <- ggplotly(cohort_change_map, tooltip = "text") %>%
+cohort_change_map_expanded_int <- ggplotly(cohort_change_map, tooltip = "text") %>%
   layout(title= list(x = 0.05,
-                     text = "<b>Cohort change between 2011 and 2021 (zeros to ten year olds) in London<b>",
+                     text = "<b>Inter-census cohort change (<1 y.o in 2011 to 10 y.o. in 2021)<b>",
                      font=list(size = 15, family = "Arial")),
          font=list(size = 14, family = "Arial", color = "black", fontface = "bold"),
          legend=list(orientation = "v", xanchor = "center", x = 1.1, y = 0.3,
-                     title=list(text='',
+                     title=list(text='% change',
                                 font = list(family = "Arial", size = 14)),
                      font = list(family = "Arial", size = 14))) %>%
   # add_annotations(text="", showarrow=FALSE, legendtitle=TRUE) %>%
@@ -418,6 +428,6 @@ cohort_change_map_int <- ggplotly(cohort_change_map, tooltip = "text") %>%
                             showarrow = F, xref='paper', yref='paper',
                             font=list(size=14, family = "Arial")),
          margin = list(l = 0,r = 0,  b =40,  t = 70,  pad = 4))
-cohort_change_map_int
+cohort_change_map_expanded_int
 
 ```
